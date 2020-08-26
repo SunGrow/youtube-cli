@@ -10,7 +10,7 @@
 
 ## About
 
-A series of Vulkan Samples written in C. Samples are heavily influenced by Khronos Vulkan Samples
+Youtube cli interface. Currently is only capable of generating a simple subscription feed page.
 
 ## Setup
 
