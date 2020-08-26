@@ -11,29 +11,6 @@ import (
 	"time"
 )
 
-type OPML struct {
-	XMLName xml.Name `xml:"opml"`
-	Version string `xml:"version,attr"`
-	Body Body `xml:"body"`
-}
-
-type Body struct {
-	XMLName xml.Name `xml:"body"`
-	HeadOutline HeadOutline `xml:"outline"`
-}
-
-type HeadOutline struct {
-	XMLName xml.Name  `xml:"outline"`
-	Outline []Outline `xml:"outline"`
-}
-
-type Outline struct {
-	XMLName xml.Name `xml:"outline"`
-	Text string `xml:"text,attr"`
-	ChannelTitle string `xml:"title,attr"`
-	LinkType string `xml:"rss,attr"`
-	ChannelLink string `xml:"xmlUrl,attr"`
-}
 
 type Feed struct {
 	XMLName xml.Name `xml:"feed"`
@@ -136,6 +113,31 @@ func ParceXMLChannelFeed(channelAddr string) (channelInfo []map[string]string){
 	return;
 }
 
+
+type OPML struct {
+	XMLName xml.Name `xml:"opml"`
+	Version string `xml:"version,attr"`
+	Body Body `xml:"body"`
+}
+
+type Body struct {
+	XMLName xml.Name `xml:"body"`
+	HeadOutline HeadOutline `xml:"outline"`
+}
+
+type HeadOutline struct {
+	XMLName xml.Name  `xml:"outline"`
+	Outline []Outline `xml:"outline"`
+}
+
+type Outline struct {
+	XMLName xml.Name `xml:"outline"`
+	Text string `xml:"text,attr"`
+	ChannelTitle string `xml:"title,attr"`
+	LinkType string `xml:"rss,attr"`
+	ChannelLink string `xml:"xmlUrl,attr"`
+}
+
 func ParceXMLSubListInput(inputDir string) (channelInfo [][]string) {
     file, err := os.Open(inputDir);
     if err != nil {
@@ -162,6 +164,23 @@ func ParceCSVSubListInput(inputDir string) (channels [][]string) {
 	return str;
 }
 
+func GetTTYSubListInput(channelInfos [][]string) (chInf [][]string) {
+	chInf = channelInfos;
+	var i int = 1;
+	for i == 1 {
+		var tmpStrTitle string;
+		var tmpStrLink string;
+		fmt.Print("Enter a channel name:\n");
+		fmt.Scan(&tmpStrTitle);
+		fmt.Print("Enter a channel URL:\n");
+		fmt.Scan(&tmpStrLink);
+		chInf = append(chInf, []string{tmpStrTitle, tmpStrLink});
+		fmt.Print("Do you wish to continue?\n1) Yes\n2) No\n");
+		fmt.Scan(&i);
+	}
+	return;
+}
+
 func BuildCSVPage(channelInfos [][]string, outFile *os.File) {
 	writer := csv.NewWriter(outFile);
 	err := writer.WriteAll(channelInfos);
@@ -171,14 +190,27 @@ func BuildCSVPage(channelInfos [][]string, outFile *os.File) {
 }
 
 
-func BuildHTMLFeedPage(channels [][]string, outDir string) {
-	file, err := os.Create(outDir+"/feedpage.html");
+func BuildHTMLFeedPage(channels [][]string, out string) {
+	file, err := os.Create(out);
 	if err != nil {
 		fmt.Println(err);
 		return;
 	}
 	defer file.Close();
 
+	var videos []map[string]string;
+	for _, channel := range channels {
+		for _, video := range ParceXMLChannelFeed(channel[1]){
+			videos = append(videos, video);
+		}
+	}
+	sort.Slice(videos, func(i int, j int)bool {
+		return videos[i]["published"] > videos[j]["published"];
+	});
+	FillHTMLFeedPage(file, videos);
+}
+
+func FillHTMLFeedPage(file *os.File, videos []map[string]string) {
 	hrs, min, sec := time.Now().Local().Clock();
 	day, month, year := time.Now().Date();
 	var datetime string;
@@ -190,15 +222,6 @@ func BuildHTMLFeedPage(channels [][]string, outDir string) {
 	file.WriteString("</head>\n");
 	file.WriteString("<body>\n");
 	file.WriteString("<h1>YouTube Subscription Feed (" + datetime + ")</h1>\n")
-	var videos []map[string]string;
-	for _, channel := range channels {
-		for _, video := range ParceXMLChannelFeed(channel[1]){
-			videos = append(videos, video);
-		}
-	}
-	sort.Slice(videos, func(i int, j int)bool {
-		return videos[i]["published"] > videos[j]["published"];
-	});
 	for i, video := range videos {
 		file.WriteString("<h2><img src="+video["thumbnail"]+" witdth="+video["thumbnailW"]+" height="+video["thumbnailH"]+" alt=img></img></h2>\n");
 		file.WriteString("<h2><a href="+video["link"]+">"+video["title"]+"</a></h2>\n");
